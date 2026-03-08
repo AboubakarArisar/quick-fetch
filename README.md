@@ -1,36 +1,77 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# QuickFetch
 
-## Getting Started
+QuickFetch is a sleek downloader prototype focused on two platforms only:
 
-First, run the development server:
+- YouTube
+- Instagram
+
+The current implementation uses real metadata extraction and streaming through `yt-dlp`.
+
+## Stack
+
+- Next.js (App Router)
+- React + TypeScript
+- TailwindCSS v4
+- Next.js API routes with Node.js runtime
+
+## Run
+
+Install runtime binaries first:
+
+1. Install `yt-dlp` and make sure `yt-dlp` is in `PATH`.
+2. Install `ffmpeg` and make sure `ffmpeg` is in `PATH`.
+
+Optional: set explicit binary path if `yt-dlp` is not globally available.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Windows PowerShell
+$env:YT_DLP_PATH = "C:\\tools\\yt-dlp.exe"
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+```bash
+pnpm dev
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Visit `http://localhost:3000`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Implemented Features
 
-## Learn More
+- Single URL preview flow
+- Batch URL input (sequential processing)
+- Platform auto-detection (`youtube.com`, `youtu.be`, `instagram.com`)
+- Smart presets:
+	- Fast Download (360p)
+	- Balanced Quality (720p)
+	- Best Quality
+	- Audio-only presets
+- Resolution + file size estimates
+- Clip bounds (start/end seconds)
+- Developer mode format details
+- Thumbnail + metadata asset download actions
 
-To learn more about Next.js, take a look at the following resources:
+## API Endpoints
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `POST /api/video-info`
+	- Body: `{ "url": "https://..." }`
+	- Returns normalized media metadata and formats.
+- `GET /api/download`
+	- Query: `url`, `formatId`, `assetType`, optional `clipStart`, `clipEnd`
+	- Returns streamed downloadable media/asset content.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Install Notes
 
-## Deploy on Vercel
+No extra Node wrapper library is required for extraction; the app invokes the `yt-dlp` binary directly.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Recommended optional libraries if you want tighter process control later:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. `zod` for stricter request validation.
+2. `p-limit` for queue/concurrency control.
+3. `rate-limiter-flexible` for abuse protection.
+
+## Folder Overview
+
+- `app/api/video-info/route.ts`: metadata API
+- `app/api/download/route.ts`: stream download API
+- `components/*`: URL, preview, clip, batch, and option UI
+- `lib/*`: detector, extractors, format filtering, ffmpeg helpers
+- `utils/*`: validators and URL parsing helpers

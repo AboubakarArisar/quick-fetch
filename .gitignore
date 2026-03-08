@@ -9,13 +9,22 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
-
+pnpm-lock.yaml
+yarn.lock
+package-lock.json
+.env*
+PROJECT_CONTEXT.md
 # testing
 /coverage
 
 # next.js
 /.next/
 /out/
+
+pnpm-lock.yml
+pnpm-lock.yaml*
+/pnpm-lock.yaml
+
 
 # production
 /build
