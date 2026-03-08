@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toApiUrl } from "@/lib/clientApi";
 import type { MediaFormat, VideoInfoResponse } from "@/lib/types";
 
 type Props = {
@@ -53,7 +54,7 @@ function buildDownloadHref(
   if (fileBaseName) params.set("fileBaseName", fileBaseName);
   if (fileExt) params.set("fileExt", fileExt);
 
-  return `/api/download?${params.toString()}`;
+  return toApiUrl(`/api/download?${params.toString()}`);
 }
 
 function AnimatedMB({ value }: { value: number }) {

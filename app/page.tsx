@@ -6,6 +6,7 @@ import ClipSelector from "@/components/ClipSelector";
 import DownloadOptions from "@/components/DownloadOptions";
 import UrlInput from "@/components/UrlInput";
 import VideoPreview from "@/components/VideoPreview";
+import { toApiUrl } from "@/lib/clientApi";
 import type { VideoInfoResponse } from "@/lib/types";
 
 type ItemState = {
@@ -23,7 +24,7 @@ function createItemId() {
 }
 
 async function fetchVideoInfo(url: string): Promise<VideoInfoResponse> {
-  const response = await fetch("/api/video-info", {
+  const response = await fetch(toApiUrl("/api/video-info"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ url }),

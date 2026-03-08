@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { applyCorsHeaders, corsPreflightResponse } from "@/lib/cors";
 import { sanitizeClipBounds, toTrimDescription } from "@/lib/ffmpeg";
 import { getInstagramInfo } from "@/lib/instagram";
 import { detectPlatform } from "@/lib/platformDetector";
@@ -18,6 +19,12 @@ function buildHeaders(fileName: string, contentType: string): Headers {
   headers.set("Cache-Control", "no-store");
   headers.set("X-QuickFetch-Mode", "stream");
   return headers;
+}
+
+function responseWithCors(request: NextRequest, body: BodyInit | null, status: number, headers?: Headers) {
+  const responseHeaders = headers ?? new Headers();
+  applyCorsHeaders(request, responseHeaders);
+  return new Response(body, { status, headers: responseHeaders });
 }
 
 function sanitizeFileName(input: string): string {
@@ -47,12 +54,12 @@ export async function GET(request: NextRequest) {
   const fileExt = sanitizeExtension(params.get("fileExt"));
 
   if (!isValidHttpUrl(url)) {
-    return new Response("Invalid URL", { status: 400 });
+    return responseWithCors(request, "Invalid URL", 400);
   }
 
   const platform = detectPlatform(url);
   if (!platform) {
-    return new Response("Unsupported platform", { status: 400 });
+    return responseWithCors(request, "Unsupported platform", 400);
   }
 
   if (assetType === "thumbnail") {
@@ -65,19 +72,19 @@ export async function GET(request: NextRequest) {
         error instanceof Error
           ? error.message
           : "Failed to resolve media info. Check yt-dlp installation.";
-      return new Response(message, { status: 500 });
+      return responseWithCors(request, message, 500);
     }
 
-    if (!info.thumbnailUrl) return new Response("No thumbnail available", { status: 404 });
+    if (!info.thumbnailUrl) return responseWithCors(request, "No thumbnail available", 404);
 
     const response = await fetch(info.thumbnailUrl);
     if (!response.ok || !response.body) {
-      return new Response("Failed to fetch thumbnail", { status: 502 });
+      return responseWithCors(request, "Failed to fetch thumbnail", 502);
     }
 
-    return new Response(response.body, {
-      headers: buildHeaders(`${sanitizeFileName(info.title) || "thumbnail"}.jpg`, "image/jpeg"),
-    });
+    const headers = buildHeaders(`${sanitizeFileName(info.title) || "thumbnail"}.jpg`, "image/jpeg");
+    applyCorsHeaders(request, headers);
+    return new Response(response.body, { headers });
   }
 
   if (assetType === "metadata") {
@@ -90,7 +97,7 @@ export async function GET(request: NextRequest) {
         error instanceof Error
           ? error.message
           : "Failed to resolve media info. Check yt-dlp installation.";
-      return new Response(message, { status: 500 });
+      return responseWithCors(request, message, 500);
     }
 
     const metadata = JSON.stringify(
@@ -107,9 +114,9 @@ export async function GET(request: NextRequest) {
       2,
     );
 
-    return new Response(encoder.encode(metadata), {
-      headers: buildHeaders("metadata.json", "application/json; charset=utf-8"),
-    });
+    const headers = buildHeaders("metadata.json", "application/json; charset=utf-8");
+    applyCorsHeaders(request, headers);
+    return new Response(encoder.encode(metadata), { headers });
   }
 
   const clip = sanitizeClipBounds({ start: clipStart, end: clipEnd });
@@ -127,13 +134,17 @@ export async function GET(request: NextRequest) {
       error instanceof Error
         ? error.message
         : "Failed to stream media. Check yt-dlp installation.";
-    return new Response(message, { status: 500 });
+    return responseWithCors(request, message, 500);
   }
 
-  return new Response(stream, {
-    headers: buildHeaders(
-      `${sanitizeFileName(fileBaseName) || `${platform}-media`}${trimSuffix}.${fileExt}`,
-      "application/octet-stream",
-    ),
-  });
+  const headers = buildHeaders(
+    `${sanitizeFileName(fileBaseName) || `${platform}-media`}${trimSuffix}.${fileExt}`,
+    "application/octet-stream",
+  );
+  applyCorsHeaders(request, headers);
+  return new Response(stream, { headers });
+}
+
+export function OPTIONS(request: NextRequest) {
+  return corsPreflightResponse(request);
 }
