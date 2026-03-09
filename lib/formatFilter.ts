@@ -8,6 +8,10 @@ function resolutionScore(resolution?: string): number {
 
 export function sortFormats(formats: MediaFormat[]): MediaFormat[] {
   return [...formats].sort((a, b) => {
+    // Prefer formats with both video and audio before pure video streams.
+    const muxedDiff = Number(b.hasVideo && b.hasAudio) - Number(a.hasVideo && a.hasAudio);
+    if (muxedDiff !== 0) return muxedDiff;
+
     const scoreDiff = resolutionScore(b.resolution) - resolutionScore(a.resolution);
     if (scoreDiff !== 0) return scoreDiff;
     return b.estimatedSizeMB - a.estimatedSizeMB;
@@ -16,15 +20,17 @@ export function sortFormats(formats: MediaFormat[]): MediaFormat[] {
 
 export function buildPresetFormats(formats: MediaFormat[]): MediaFormat[] {
   const videoFormats = formats.filter((f) => f.hasVideo);
+  const muxedVideoFormats = videoFormats.filter((f) => f.hasAudio);
+  const preferredVideoFormats = muxedVideoFormats.length > 0 ? muxedVideoFormats : videoFormats;
   const audioFormats = formats.filter((f) => !f.hasVideo && f.hasAudio);
 
-  const fast = [...videoFormats]
+  const fast = [...preferredVideoFormats]
     .filter((format) => resolutionScore(format.resolution) <= 480)
     .sort((a, b) => a.estimatedSizeMB - b.estimatedSizeMB)[0];
-  const balanced = [...videoFormats]
+  const balanced = [...preferredVideoFormats]
     .filter((format) => resolutionScore(format.resolution) <= 720)
     .sort((a, b) => Math.abs(720 - resolutionScore(a.resolution)) - Math.abs(720 - resolutionScore(b.resolution)))[0];
-  const best = sortFormats(videoFormats)[0];
+  const best = sortFormats(preferredVideoFormats)[0];
 
   const audio128 = audioFormats.find((f) => f.bitrateKbps === 128);
   const audio320 = audioFormats.find((f) => f.bitrateKbps === 320);
